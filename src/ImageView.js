@@ -9,6 +9,7 @@ import {
     Modal,
     Platform,
     View,
+    TouchableWithoutFeedback
 } from 'react-native';
 
 import {
@@ -437,6 +438,7 @@ export default class ImageView extends Component<PropsType, StateType> {
                 this.doubleTapTimer = setTimeout(() => {
                     this.togglePanels();
                     this.doubleTapTimer = null;
+                    this.close();
                 }, 200);
             }
         }
@@ -728,19 +730,25 @@ export default class ImageView extends Component<PropsType, StateType> {
         const loaded = image.loaded && image.width && image.height;
 
         return (
-            <View
-                style={styles.imageContainer}
-                onStartShouldSetResponder={(): boolean => true}
+            <TouchableWithoutFeedback
+                onPress={() => {
+                    this.close();
+                }}
             >
-                <Animated.Image
-                    resizeMode="cover"
-                    source={image.source}
-                    style={this.getImageStyle(image, index)}
-                    onLoad={(): void => this.onImageLoaded(index)}
-                    {...this.panResponder.panHandlers}
-                />
-                {!loaded && <ActivityIndicator style={styles.loading} />}
-            </View>
+                <View
+                    style={styles.imageContainer}
+                    onStartShouldSetResponder={(): boolean => true}
+                >
+                    <Animated.Image
+                        resizeMode="cover"
+                        source={image.source}
+                        style={this.getImageStyle(image, index)}
+                        onLoad={(): void => this.onImageLoaded(index)}
+                        {...this.panResponder.panHandlers}
+                    />
+                    {!loaded && <ActivityIndicator style={styles.loading} />}
+                </View>
+            </TouchableWithoutFeedback>
         );
     };
 
