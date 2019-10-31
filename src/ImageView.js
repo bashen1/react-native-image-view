@@ -9,6 +9,7 @@ import {
     Modal,
     Platform,
     View,
+    SafeAreaView,
     TouchableWithoutFeedback
 } from 'react-native';
 
@@ -70,6 +71,7 @@ type PropsType = {
     isPinchZoomEnabled: boolean,
     isSwipeCloseEnabled: boolean,
     onClose: () => {},
+    onImageChange: number => {},
     renderFooter: ImageType => {},
     controls: {
         close?: ComponentType<ControlType> | boolean,
@@ -83,11 +85,11 @@ export type StateType = {
     isVisible: boolean,
     imageIndex: number,
     imageScale: number,
-    imageTranslate: {x: number, y: number},
+    imageTranslate: { x: number, y: number },
     scrollEnabled: boolean,
     panelsVisible: boolean,
     isFlatListRerendered: boolean,
-    screenDimensions: {screenWidth: number, screenHeight: number},
+    screenDimensions: { screenWidth: number, screenHeight: number },
 };
 
 export default class ImageView extends Component<PropsType, StateType> {
@@ -164,21 +166,21 @@ export default class ImageView extends Component<PropsType, StateType> {
         Dimensions.addEventListener('change', this.onChangeDimension);
     }
 
-    componentWillReceiveProps(nextProps: PropsType) {
+    componentDidUpdate() {
         const {images, imageIndex, isVisible} = this.state;
 
         if (
-            typeof nextProps.isVisible !== 'undefined' &&
-            nextProps.isVisible !== isVisible
+            typeof this.props.isVisible !== 'undefined' &&
+            this.props.isVisible !== isVisible
         ) {
-            this.onNextImagesReceived(nextProps.images, nextProps.imageIndex);
+            this.onNextImagesReceived(this.props.images, this.props.imageIndex);
 
             if (
-                images !== nextProps.images ||
-                imageIndex !== nextProps.imageIndex
+                images !== this.props.images ||
+                imageIndex !== this.props.imageIndex
             ) {
                 const imagesWithoutSize = getImagesWithoutSize(
-                    addIndexesToImages(nextProps.images)
+                    addIndexesToImages(this.props.images)
                 );
 
                 if (imagesWithoutSize.length) {
@@ -186,20 +188,20 @@ export default class ImageView extends Component<PropsType, StateType> {
                         updatedImages =>
                             this.onNextImagesReceived(
                                 this.setSizeForImages(updatedImages),
-                                nextProps.imageIndex
+                                this.props.imageIndex
                             )
                     );
                 }
             }
 
             this.setState({
-                isVisible: nextProps.isVisible,
+                isVisible: this.props.isVisible,
                 isFlatListRerendered: false,
             });
 
             this.modalBackgroundOpacity.setValue(0);
 
-            if (nextProps.isVisible) {
+            if (this.props.isVisible) {
                 Animated.timing(this.modalAnimation, {
                     duration: 400,
                     toValue: 1,
@@ -216,7 +218,7 @@ export default class ImageView extends Component<PropsType, StateType> {
         }
     }
 
-    onChangeDimension = ({window}: {window: DimensionsType}) => {
+    onChangeDimension = ({window}: { window: DimensionsType }) => {
         const screenDimensions = {
             screenWidth: window.width,
             screenHeight: window.height,
@@ -295,6 +297,10 @@ export default class ImageView extends Component<PropsType, StateType> {
 
             this.imageScaleValue.setValue(nextImageScale);
             this.imageTranslateValue.setValue(nextImageTranslate);
+
+            if (typeof this.props.onImageChange === 'function') {
+                this.props.onImageChange(nextImageIndex);
+            }
         }
     };
 
@@ -453,9 +459,9 @@ export default class ImageView extends Component<PropsType, StateType> {
             [
                 modalBackgroundOpacity > 0
                     ? Animated.timing(this.modalBackgroundOpacity, {
-                          toValue: 0,
-                          duration: 100,
-                      })
+                        toValue: 0,
+                        duration: 100,
+                    })
                     : null,
                 Animated.timing(this.imageTranslateValue.x, {
                     toValue: x,
@@ -530,7 +536,7 @@ export default class ImageView extends Component<PropsType, StateType> {
     getImageStyle(
         image: ImageType,
         index: number
-    ): {width?: number, height?: number, transform?: any, opacity?: number} {
+    ): { width?: number, height?: number, transform?: any, opacity?: number } {
         const {imageIndex, screenDimensions} = this.state;
         const {width, height} = image;
 
@@ -645,7 +651,7 @@ export default class ImageView extends Component<PropsType, StateType> {
         dx: number,
         dy: number,
         scale: number
-    ): {x: number, y: number} {
+    ): { x: number, y: number } {
         const {
             images,
             imageIndex,
@@ -701,7 +707,7 @@ export default class ImageView extends Component<PropsType, StateType> {
         this.setState({panelsVisible});
 
         Animated.timing(this.headerTranslateValue.y, {
-            toValue: !panelsVisible ? -HEADER_HEIGHT : 0,
+            toValue: !panelsVisible ? -(HEADER_HEIGHT + 44) : 0,
             duration: 200,
             useNativeDriver: true,
         }).start();
@@ -726,7 +732,7 @@ export default class ImageView extends Component<PropsType, StateType> {
         }
     };
 
-    renderImage = ({item: image, index}: {item: *, index: number}): * => {
+    renderImage = ({item: image, index}: { item: *, index: number }): * => {
         const loaded = image.loaded && image.width && image.height;
 
         return (
@@ -746,7 +752,7 @@ export default class ImageView extends Component<PropsType, StateType> {
                         onLoad={(): void => this.onImageLoaded(index)}
                         {...this.panResponder.panHandlers}
                     />
-                    {!loaded && <ActivityIndicator style={styles.loading} />}
+                    {!loaded && <ActivityIndicator style={styles.loading}/>}
                 </View>
             </TouchableWithoutFeedback>
         );
@@ -805,8 +811,10 @@ export default class ImageView extends Component<PropsType, StateType> {
                         },
                     ]}
                 >
-                    {!!close &&
+                    <SafeAreaView style={{flex: 1}}>
+                        {!!close &&
                         React.createElement(close, {onPress: this.close})}
+                    </SafeAreaView>
                 </Animated.View>
                 <FlatList
                     horizontal
@@ -825,11 +833,11 @@ export default class ImageView extends Component<PropsType, StateType> {
                     onMomentumScrollEnd={this.onMomentumScrollEnd}
                 />
                 {prev &&
-                    isPrevVisible &&
-                    React.createElement(prev, {onPress: this.scrollToPrev})}
+                isPrevVisible &&
+                React.createElement(prev, {onPress: this.scrollToPrev})}
                 {next &&
-                    isNextVisible &&
-                    React.createElement(next, {onPress: this.scrollToNext})}
+                isNextVisible &&
+                React.createElement(next, {onPress: this.scrollToNext})}
                 {renderFooter && (
                     <Animated.View
                         style={[styles.footer, {transform: footerTranslate}]}
@@ -838,8 +846,8 @@ export default class ImageView extends Component<PropsType, StateType> {
                         }}
                     >
                         {typeof renderFooter === 'function' &&
-                            images[imageIndex] &&
-                            renderFooter(images[imageIndex])}
+                        images[imageIndex] &&
+                        renderFooter(images[imageIndex])}
                     </Animated.View>
                 )}
             </Modal>
